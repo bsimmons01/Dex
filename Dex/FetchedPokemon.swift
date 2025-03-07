@@ -64,6 +64,16 @@ struct FetchedPokemon: Decodable {
             
             decodedTypes.append(type)
         }
+        
+        // Example: Pidgeot: ["normal", "flying"], really want them flip flopped
+        if decodedTypes.count == 2 && decodedTypes[0] == "normal" {
+//            let tempType = decodedTypes[0]
+//            decodedTypes[0] = decodedTypes[1]
+//            decodedTypes[1] = tempType
+            // Above is the manual/old-fashioned way to do it, Swift provides this helper to it:
+            decodedTypes.swapAt(0, 1)
+         }
+        
         types = decodedTypes
         
         var decodedStats: [Int16] = []
