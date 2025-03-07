@@ -12,6 +12,10 @@ struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
     @FetchRequest <Pokemon>(
+        sortDescriptors: []
+    ) private var allPokemon
+    
+    @FetchRequest <Pokemon>(
         sortDescriptors: [SortDescriptor(\.id)],
         animation: .default
     ) private var pokedex
@@ -20,6 +24,7 @@ struct ContentView: View {
     @State private var filterByFavorites = false
     
     let fetcher = FetchService()
+    let pokeMonMaxCount = 151
     
     private var dynamicPredicate: NSPredicate {
         var predicates: [NSPredicate] = []
@@ -42,8 +47,8 @@ struct ContentView: View {
 
     var body: some View {
         // This is a way ALTERNATIVE to the task on the NavStack view to get data on launch
-        if pokedex.isEmpty {
-//        if pokedex.count < 2 { // For Development, make it visible to design it
+        if allPokemon.isEmpty {
+//        if allPokemon.count < 2 { // For Development, make it visible to design it
             ContentUnavailableView {
                 Label("No Pokemon", image: .nopokemon)
             } description: {
@@ -94,9 +99,21 @@ struct ContentView: View {
                                     }
                                 }
                             }
+                            .swipeActions (edge: .leading) {
+                                Button(pokemon.favorite ? "Remove from Favorites" : "Add to Favorites", systemImage: "star") {
+                                    pokemon.favorite.toggle()
+                                    
+                                    do {
+                                        try viewContext.save()
+                                    } catch {
+                                        print(error)
+                                    }
+                                }
+                                .tint(pokemon.favorite ? .gray : .yellow)
+                            }
                         }
                     } footer: {
-                        if pokedex.count < 151 {
+                        if allPokemon.count < pokeMonMaxCount {
                             ContentUnavailableView {
                                 Label("Missing Pokemon", image: .nopokemon)
                             } description: {
@@ -150,7 +167,7 @@ struct ContentView: View {
     
     private func getPokemon(from id: Int) {
         Task {
-            for i in id..<152 {
+            for i in id...pokeMonMaxCount {
                 do {
                     let fetchedPokemon = try await fetcher.fetchPokemon(i)
                     
