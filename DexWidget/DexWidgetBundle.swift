@@ -1,16 +1,16 @@
-////
-////  DexWidgetBundle.swift
-////  DexWidget
-////
-////  Created by Brian Simmons on 3/8/25.
-////
 //
-//import WidgetKit
-//import SwiftUI
+//  DexWidgetBundle.swift
+//  DexWidget
 //
-//@main
-//struct DexWidgetBundle: WidgetBundle {
-//    var body: some Widget {
-//        DexWidget()
-//    }
-//}
+//  Created by Brian Simmons on 3/8/25.
+//
+
+import WidgetKit
+import SwiftUI
+
+@main
+struct DexWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        DexWidget()
+    }
+}
