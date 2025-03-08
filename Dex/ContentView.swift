@@ -10,7 +10,7 @@ import CoreData
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
-
+    
     @FetchRequest <Pokemon>(
         sortDescriptors: []
     ) private var allPokemon
@@ -44,11 +44,11 @@ struct ContentView: View {
         return NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
     }
     
-
+    
     var body: some View {
         // This is a way ALTERNATIVE to the task on the NavStack view to get data on launch
         if allPokemon.isEmpty {
-//        if allPokemon.count < 2 { // For Development, make it visible to design it
+            //        if allPokemon.count < 2 { // For Development, make it visible to design it
             ContentUnavailableView {
                 Label("No Pokemon", image: .nopokemon)
             } description: {
@@ -65,7 +65,7 @@ struct ContentView: View {
                     Section {
                         ForEach(pokedex) { pokemon in
                             NavigationLink(value: pokemon) {
-                                AsyncImage(url: pokemon.sprite) { image in
+                                AsyncImage(url: pokemon.spriteURL) { image in
                                     image
                                         .resizable()
                                         .scaledToFit()
@@ -161,9 +161,9 @@ struct ContentView: View {
             }
         }
         // This is ONE way to get the data at view/app launch
-//        .task {
-//            getPokemon(from: 1)
-//        }
+        //        .task {
+        //            getPokemon(from: 1)
+        //        }
     }
     
     private func getPokemon(from id: Int) {
@@ -182,13 +182,13 @@ struct ContentView: View {
                     pokemon.specialAttack = fetchedPokemon.specialAttack
                     pokemon.specialDefense = fetchedPokemon.specialDefense
                     pokemon.speed = fetchedPokemon.speed
-                    pokemon.sprite = fetchedPokemon.sprite
-                    pokemon.shiny = fetchedPokemon.shiny
+                    pokemon.spriteURL = fetchedPokemon.spriteURL
+                    pokemon.shinyURL = fetchedPokemon.shinyURL
                     
                     // Just to test the Favorites filter while developing
-//                    if pokemon.id % 2 == 0 {
-//                        pokemon.favorite = true
-//                    }
+                    //                    if pokemon.id % 2 == 0 {
+                    //                        pokemon.favorite = true
+                    //                    }
                     
                     try viewContext.save()
                     
@@ -196,8 +196,32 @@ struct ContentView: View {
                     print(error)
                 }
             }
+            
+            storeSprites()
         }
     }
+
+    private func storeSprites() {
+        Task {
+            do {
+                for pokemon in allPokemon {
+                    // URLSession.shared.data returns a tuple, data + response
+                    // We don't care about the response, so the appending of
+                    // the .0 just gets the first element, the data.
+                    
+                    pokemon.sprite = try await URLSession.shared.data(from: pokemon.spriteURL!).0
+                    pokemon.shiny = try await URLSession.shared.data(from: pokemon.shinyURL!).0
+                    
+                    try viewContext.save()
+                    
+                    print("Sprites stored: \(pokemon.id): \(pokemon.name!.capitalized)")
+                }
+            } catch {
+                print(error)
+            }
+        }
+    }
+    
 }
 
 #Preview {
