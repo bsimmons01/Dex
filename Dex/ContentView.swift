@@ -6,19 +6,12 @@
 //
 
 import SwiftUI
-import CoreData
+import SwiftData
 
 struct ContentView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-    
-    @FetchRequest <Pokemon>(
-        sortDescriptors: []
-    ) private var allPokemon
-    
-    @FetchRequest <Pokemon>(
-        sortDescriptors: [SortDescriptor(\.id)],
-        animation: .default
-    ) private var pokedex
+    @Environment(\.modelContext) private var modelContext
+       
+    @Query(sort: \Pokemon.id, animation: .default) private var pokedex: [Pokemon]
     
     @State private var searchText = ""
     @State private var filterByFavorites = false
@@ -46,9 +39,7 @@ struct ContentView: View {
     
     
     var body: some View {
-        // This is a way ALTERNATIVE to the task on the NavStack view to get data on launch
-        if allPokemon.isEmpty {
-            //        if allPokemon.count < 2 { // For Development, make it visible to design it
+        if pokedex.isEmpty {
             ContentUnavailableView {
                 Label("No Pokemon", image: .nopokemon)
             } description: {
@@ -83,7 +74,7 @@ struct ContentView: View {
                                 
                                 VStack(alignment: .leading) {
                                     HStack {
-                                        Text(pokemon.name!.capitalized)
+                                        Text(pokemon.name.capitalized)
                                             .fontWeight(.bold)
                                         
                                         if pokemon.favorite {
@@ -93,7 +84,7 @@ struct ContentView: View {
                                     }
                                     
                                     HStack {
-                                        ForEach(pokemon.types!, id: \.self) { type in
+                                        ForEach(pokemon.types, id: \.self) { type in
                                             Text(type.capitalized)
                                                 .font(.subheadline)
                                                 .fontWeight(.semibold)
@@ -111,7 +102,7 @@ struct ContentView: View {
                                     pokemon.favorite.toggle()
                                     
                                     do {
-                                        try viewContext.save()
+                                        try modelContext.save()
                                     } catch {
                                         print(error)
                                     }
@@ -120,7 +111,7 @@ struct ContentView: View {
                             }
                         }
                     } footer: {
-                        if allPokemon.count < pokeMonMaxCount {
+                        if pokedex.count < pokeMonMaxCount {
                             ContentUnavailableView {
                                 Label("Missing Pokemon", image: .nopokemon)
                             } description: {
@@ -138,15 +129,8 @@ struct ContentView: View {
                 .navigationTitle("Pokedex")
                 .searchable(text: $searchText, prompt: "Find a Pokemon")
                 .autocorrectionDisabled()
-                .onChange(of: searchText) {
-                    pokedex.nsPredicate = dynamicPredicate
-                }
-                .onChange(of: filterByFavorites) {
-                    pokedex.nsPredicate = dynamicPredicate
-                }
                 .navigationDestination(for: Pokemon.self) { pokemon in
-                    PokemonDetail()
-                        .environmentObject(pokemon)
+                    PokemonDetail(pokemon: pokemon)
                 }
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
@@ -157,20 +141,9 @@ struct ContentView: View {
                         }
                         .tint(.yellow)
                     }
-                    // A way while developing to get the Internet data on demand via
-                    // the + button in the toolbar
-                    //                ToolbarItem {
-                    //                    Button("Add Item", systemImage: "plus") {
-                    //                        getPokemon(from: 1)
-                    //                    }
-                    //                }
                 }
             }
         }
-        // This is ONE way to get the data at view/app launch
-        //        .task {
-        //            getPokemon(from: 1)
-        //        }
     }
     
     private func getPokemon(from id: Int) {
@@ -178,27 +151,7 @@ struct ContentView: View {
             for i in id...pokeMonMaxCount {
                 do {
                     let fetchedPokemon = try await fetcher.fetchPokemon(i)
-                    
-                    let pokemon = Pokemon(context: viewContext)
-                    pokemon.id = fetchedPokemon.id
-                    pokemon.name = fetchedPokemon.name
-                    pokemon.types = fetchedPokemon.types
-                    pokemon.hp = fetchedPokemon.hp
-                    pokemon.attack = fetchedPokemon.attack
-                    pokemon.defense = fetchedPokemon.defense
-                    pokemon.specialAttack = fetchedPokemon.specialAttack
-                    pokemon.specialDefense = fetchedPokemon.specialDefense
-                    pokemon.speed = fetchedPokemon.speed
-                    pokemon.spriteURL = fetchedPokemon.spriteURL
-                    pokemon.shinyURL = fetchedPokemon.shinyURL
-                    
-                    // Just to test the Favorites filter while developing
-                    //                    if pokemon.id % 2 == 0 {
-                    //                        pokemon.favorite = true
-                    //                    }
-                    
-                    try viewContext.save()
-                    
+                    modelContext.insert(fetchedPokemon)
                 } catch {
                     print(error)
                 }
@@ -211,17 +164,17 @@ struct ContentView: View {
     private func storeSprites() {
         Task {
             do {
-                for pokemon in allPokemon {
+                for pokemon in pokedex {
                     // URLSession.shared.data returns a tuple, data + response
                     // We don't care about the response, so the appending of
                     // the .0 just gets the first element, the data.
                     
-                    pokemon.sprite = try await URLSession.shared.data(from: pokemon.spriteURL!).0
-                    pokemon.shiny = try await URLSession.shared.data(from: pokemon.shinyURL!).0
+                    pokemon.sprite = try await URLSession.shared.data(from: pokemon.spriteURL).0
+                    pokemon.shiny = try await URLSession.shared.data(from: pokemon.shinyURL).0
                     
-                    try viewContext.save()
+                    try modelContext.save()
                     
-                    print("Sprites stored: \(pokemon.id): \(pokemon.name!.capitalized)")
+                    print("Sprites stored: \(pokemon.id): \(pokemon.name.capitalized)")
                 }
             } catch {
                 print(error)
@@ -232,5 +185,6 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    ContentView()
+        .modelContainer(PersistenceController.preview)
 }
