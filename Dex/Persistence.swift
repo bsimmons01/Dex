@@ -55,6 +55,10 @@ struct PersistenceController {
         container = NSPersistentContainer(name: "Dex")
         if inMemory {
             container.persistentStoreDescriptions.first!.url = URL(fileURLWithPath: "/dev/null")
+        } else {
+            // The code was added AFTER the App Group so that the Widget
+            // and the main app utilize the same database
+            container.persistentStoreDescriptions.first!.url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.centrasoft.DexGroup")!.appendingPathComponent("Dex.sqlite")
         }
         container.loadPersistentStores(completionHandler: { (storeDescription, error) in
             if let error = error as NSError? {
